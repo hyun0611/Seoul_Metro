@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>서울메트로 경로 탐색</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1f1f1f 100%);
+    font-family: 'Noto Sans KR', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 480px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+
+  .header h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 6px;
+  }
+
+  .header p {
+    font-size: 13px;
+    color: rgba(255,255,255,0.4);
+  }
+
+  .glass-card {
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 24px;
+    padding: 28px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    margin-bottom: 20px;
+  }
+
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .input-wrap {
+    position: relative;
+  }
+
+  .input-label {
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+
+  input {
+    width: 100%;
+    padding: 14px 16px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    color: white;
+    font-size: 15px;
+    font-family: 'Noto Sans KR', sans-serif;
+    outline: none;
+    transition: all 0.2s;
+  }
+
+  input:focus {
+    border-color: rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.1);
+  }
+
+  input::placeholder { color: rgba(255,255,255,0.25); }
+
+  .btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+
+  .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+
+  .result-card {
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 24px;
+    padding: 28px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    display: none;
+  }
+
+  .station-card {
+    position: relative;
+  }
+  .station-card::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    border-radius: 14px 0 0 14px;
+    background: var(--lineColor);
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .stat {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 4px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 0.08em;
+  }
+
+  .path-container {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .station-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    border-left: 4px solid transparent;
+  }
+
+  .station-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .station-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .station-name {
+    font-size: 15px;
+    font-weight: 500;
+    color: white;
+  }
+
+  .badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-weight: 500;
+    border: 1px solid;
+  }
+
+  .badges {
+  display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .badge.start { background: rgba(16,185,129,0.15); color: #10b981; border-color: rgba(16,185,129,0.3); }
+  .badge.end { background: rgba(239,68,68,0.15); color: #ef4444; border-color: rgba(239,68,68,0.3); }
+  .badge.transfer { background: rgba(251,191,36,0.15); color: #fbbf24; border-color: rgba(251,191,36,0.3); vertical-align: middle; }
+  .badge.line { font-weight: 600; }
+
+  .arrow {
+    text-align: center;
+    color: rgba(255,255,255,0.2);
+    font-size: 14px;
+    padding: 4px 0;
+  }
+
+  .loading {
+    text-align: center;
+    color: rgba(255,255,255,0.4);
+    font-size: 14px;
+    padding: 20px;
+    display: none;
+  }
+
+  .error {
+    text-align: center;
+    color: #ef4444;
+    font-size: 13px;
+    padding: 12px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>🚇서울메트로 경로 탐색</h1>
+    <p>출발역과 도착역을 입력하세요</p>
+  </div>
+
+  <div class="glass-card">
+    <div class="input-group">
+      <div class="input-wrap">
+        <div class="input-label">출발역</div>
+        <input type="text" id="start" placeholder="예: 서울역">
+      </div>
+      <div class="input-wrap">
+        <div class="input-label">도착역</div>
+        <input type="text" id="end" placeholder="예: 낙성대">
+      </div>
+    </div>
+    <button class="btn" onclick="search()">경로 찾기</button>
+    <div class="loading" id="loading">탐색 중...</div>
+    <div class="error" id="error"></div>
+  </div>
+
+  <div class="result-card" id="result"></div>
+</div>
+
+<script>
+  const lineColors = {
+    '1': '#2563eb', '2': '#16a34a', '3': '#ea580c',
+    '4': '#0891b2', '5': '#7c3aed', '6': '#92400e',
+    '7': '#4d7c0f', '8': '#be185d'
+  };
+
+  async function search() {
+    const start = document.getElementById('start').value.trim();
+    const end = document.getElementById('end').value.trim();
+
+    if (!start || !end) return;
+
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('result').style.display = 'none';
+    document.getElementById('error').style.display = 'none';
+
+    try {
+      const res = await fetch('/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ start, end })
+      });
+
+      const path = await res.json();
+      document.getElementById('loading').style.display = 'none';
+
+      if (!path || path.length === 0) {
+        document.getElementById('error').textContent = '경로를 찾을 수 없어요';
+        document.getElementById('error').style.display = 'block';
+        return;
+      }
+
+      renderResult(path);
+    } catch (e) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').textContent = '오류가 발생했어요';
+      document.getElementById('error').style.display = 'block';
+    }
+  }
+
+  function renderResult(path) {
+        // 환승역 합치기
+    const merged = [];
+    for (let i = 0; i < path.length; i++) {
+      if (
+        i < path.length - 1 &&
+        path[i].name === path[i + 1].name &&
+        path[i].line !== path[i + 1].line
+      ) {
+        merged.push({
+          name: path[i].name,
+          line: path[i].line,
+          transferTo: path[i + 1].line
+        });
+        i++; // 다음 것은 건너뜀
+      } else {
+        merged.push(path[i]);
+      }
+    } 
+    const transfers = new Set(path.map(p => p.line)).size - 1;
+    let html = `
+      <div class="stats">
+        <div class="stat"><div class="stat-value">${merged.length}</div><div class="stat-label">총 역 수</div></div>
+        <div class="stat"><div class="stat-value">${transfers}</div><div class="stat-label">환승 횟수</div></div>
+      </div>
+      <div class="path-container">
+    `;   
+    merged.forEach((p, i) => {
+      const color = lineColors[p.line] || '#6b7280';
+      const nextColor = i < path.length - 1 ? (lineColors[path[i+1].line] || '#6b7280') : null;
+      const isStart = i === 0;
+      const isEnd = i === merged.length - 1;
+      const isTransfer = !!p.transferTo;
+      const borderStyle = isTransfer
+        ? `--lineColor: linear-gradient(to bottom, ${color} 50%, ${nextColor} 50%);`
+        : `--lineColor: ${color};`
+
+      const dotStyle = isTransfer && !isStart
+        ? `background: linear-gradient(to bottom, ${color}, ${nextColor})`
+        : `background: ${color}`;
+
+      let badge = '';
+
+      // 환승역 (무조건 중간역)
+      if (p.transferTo) {
+        badge = `
+          <span class="badge transfer">환승</span>
+        `;
+      } else {
+        // 기본 호선 배지
+        const lineBadge = `
+          <span class="badge line" 
+            style="background:${color}22;color:${color};border-color:${color}44">
+            ${p.line}호선
+          </span>
+        `;
+
+        badge = `
+          ${isStart ? '<span class="badge start">출발</span>' : ''}
+          ${isEnd ? '<span class="badge end">도착</span>' : ''}
+          ${lineBadge}
+        `;
+      }
+
+      html += `
+        <div class="station-card" style="${borderStyle}">
+          <div class="station-dot" style="${dotStyle}"></div>
+          <div class="station-info">
+            <div class="station-name">${p.name}</div>
+            <div class="badges">${badge}</div>
+          </div>
+        </div>
+        ${i < merged.length - 1 ? '<div class="arrow">↓</div>' : ''}
+      `;
+    });
+
+    html += '</div>';
+
+    const result = document.getElementById('result');
+    result.innerHTML = html;
+    result.style.display = 'block';
+  }
+
+  // 엔터키로 검색
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') search();
+  });
+</script>
+</body>
+</html>
