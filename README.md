@@ -57,11 +57,11 @@ http://localhost:3000
 
 ```
 Seoul_Metro/
-├── main.cpp          # 다익스트라 엔진
+├── main.cpp          # 다익스트라 엔진(최단거리 알고리즘)
 ├── server.py         # Flask 서버
 ├── index.html        # 프론트엔드 UI
-├── subway_utf8.csv   # 역 데이터
-└── path.txt          # 경로 결과 (런타임 생성)
+├── subway_utf8.csv   # 서울메트로 역 데이터
+└── path.txt          # 경로 결과
 ```
 
 ---
