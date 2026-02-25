@@ -41,6 +41,9 @@
 ## 실행 방법
 
 ```bash
+# 의존성 설치
+pip install flask
+
 # C++ 컴파일
 g++ -std=c++17 -o metro main.cpp
 
