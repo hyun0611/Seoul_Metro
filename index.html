@@ -332,7 +332,7 @@
     `;   
     merged.forEach((p, i) => {
       const color = lineColors[p.line] || '#6b7280';
-      const nextColor = i < path.length - 1 ? (lineColors[path[i+1].line] || '#6b7280') : null;
+      const nextColor = i < merged.length - 1 ? (lineColors[merged[i+1].line] || '#6b7280') : null;
       const isStart = i === 0;
       const isEnd = i === merged.length - 1;
       const isTransfer = !!p.transferTo;

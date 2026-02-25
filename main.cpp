@@ -1,98 +1,102 @@
-#include <iostream>
-#include <vector>
-#include <string>
-#include <map>
-#include <fstream>
-#include <sstream>
-#include <queue>
-#include <climits>
-#include <cstdlib>
+#include<iostream>
+#include<string>
+#include<map>
+#include<vector>
+#include<climits>
+#include<queue>
+#include<fstream>
+#include<sstream>
 using namespace std;
 
-// 1단계 - 구조체 정의
-struct Station {
+struct Station{ //역
     int id;
     string name;
     int line;
 };
 
-struct Edge {
+struct Edge{ //경로
     int to;
     double distance;
     bool isTransfer;
 };
 
-// 2단계 - 전역 변수 선언
-vector<Station> stations; //역 목록
-vector<vector<Edge>> graph; // 각 역에서의 경로 목록
-map<string, vector<int>> nameToIds; //이름으로 역 id 찾기(중복 호선)
+vector<Station> stations; //전체 역을 담을 벡터 생성
+vector<vector<Edge>> graph; // 각 역에서의 경로 목록 ex) graph[0]은 stations[0]에서 갈 수 있는 경로 목록
+map<string, vector<int>> nameToIds; //string을 기준으로 해당 역의 id들 찾는 map. 환승역일 경우 호선마다 역을 다르게 여기기에 필요
 
-void loadCSV(string filename) {
+void loadCSV(string filename) //csv 파일을 불러와서 읽는 함수
+{
     ifstream file(filename);
-    
-    if (!file.is_open()) {
-        cout << "파일 열기 실패" << endl;
+
+    if(!file.is_open())
+    {
+        cout<<"파일 열기 실패"<<endl;
         return;
     }
+
     string line;
-    
-    getline(file, line); // 첫 줄(헤더) 스킵
+    getline(file, line); //csv 파일의 첫 줄(헤더) 제외
 
-    int prevLine = -1; //자료에서 노선이 오름차순으로 나열되어있기 때문에 노선 변경되면 edge연결하면 안됨
-    int prevId = -1;
+    int prevLine = -1; //순차적으로 1호선부터 8호선까지 읽기 때문에 노선 변경시 엣지 연결하면 안됨.
+    int prevId = -1; // 그리고 양방향으로 연결해야 하기 때문에 직전 역의 정보를 알아야 함.
 
-    while (getline(file, line)) { // 한 줄씩 읽기 반복
-
-        stringstream ss(line);
+    while(getline(file, line))
+    {
+        stringstream ss(line); //문자열을 스트림처럼 읽기 위해서 ss에 넣기
         string token;
         vector<string> tokens;
 
-        
-        while (getline(ss, token, ',')) { // ',' 대신 '\t'로 변경
-            tokens.push_back(token);
+        while(getline(ss, token, ','))
+        {
+            tokens.push_back(token);    
         }
-        
-        Station s; //역 정보를 토큰으로부터 입력
-        s.id = stations.size();
-        s.name = tokens[2];
-        s.line = stoi(tokens[1]);
 
-        stations.push_back(s);
-        graph.push_back(vector<Edge>()); 
-        nameToIds[s.name].push_back(s.id);
+        Station s; //역 정보를 담을 임시 Station 생성
+        s.id = stations.size(); //역 id == 크기 
+        s.name = tokens[2]; //역 이름
+        s.line = stoi(tokens[1]); //stoi를 통해 string을 int로 변환
 
-        if(prevLine == s.line){ //아직 같은 호선을 추가중이면
-            Edge e; 
+        stations.push_back(s); //역 s를 삽입
+        graph.push_back(vector<Edge>()); //빈 엣지 벡터 만들어두기. 크기 맞추기 위함
+        nameToIds[s.name].push_back(s.id); //해당 역 이름의 위치에 아이디 삽입
+
+        if(prevLine == s.line) //이전 역과 현재 역의 호선이 같으면
+        {
+            Edge e;
             e.to = s.id;
-            e.distance = stod(tokens[4]);
+            e.distance = stod(tokens[4]); //stod을 통해 string을 double로 변환
             e.isTransfer = false;
-            graph[prevId].push_back(e); //직전 역과 지금 역의 경로를 연결
-
+            graph[prevId].push_back(e); //graph의 직전 역 자리에 해당 엣지를 추가함으로서 {전역 -> 현재역} 엣지 추가
+            
             Edge e2;
             e2.to = prevId;
             e2.distance = stod(tokens[4]);
             e2.isTransfer = false;
-            graph[s.id].push_back(e2);
+            graph[s.id].push_back(e2); //graph의 현재 역 자리에 해당 엣지를 추가함으로서 {현재역 -> 전역} 엣지 추가
         }
-        prevId = s.id;
         prevLine = s.line;
+        prevId = s.id;
     }
     file.close();
-    cout << "총 역 수: " << stations.size() << endl; // 추가
 }
 
-void addTransferEdges() {
-    for (auto& [name, ids] : nameToIds) { // nameToIds의 모든 항목 순회, name=역명 ids=해당 역명의 id목록
-        if (ids.size() > 1) { // 같은 이름의 역이 2개 이상이면 환승역
-            for (int i = 0; i < ids.size(); i++) { // 환승역의 모든 id 순회
-                for (int j = 0; j < ids.size(); j++) { // 연결할 대상 id 순회
-                    if (i != j) { // 자기 자신은 제외
+void addTransferEdges() //동일한 역이나 호선이 달라 다른 역으로 여겨지는 환승역 연결하는 함수
+{
+    for(auto& [name, ids]: nameToIds) //nameToIds의 모든 항목들 순회
+    {
+        if(ids.size()>1) //같은 이름의 역이 2개 이상이면, which means 환승역이면
+        {
+            for(int i=0;i<ids.size();i++) //i가 연결 시작점
+            {
+                for(int j=0;j<ids.size();j++) //j가 연결 대상
+                {
+                    if(i!=j)
+                    {
                         Edge e;
-                        e.to = ids[j];       // 연결할 대상 역 id
-                        e.time = 5;          // 환승 소요시간 임의 설정 (5분)
-                        e.distance = 0.5;      // 환승은 거리 0
-                        e.isTransfer = true; // 환승 엣지 표시
-                        graph[ids[i]].push_back(e); // ids[i] 역의 엣지 목록에 추가
+                        e.to = ids[j]; //연결 대상 역 id
+                        e.distance = 2.5; //환승 거리는 임의로 2.5 설정해서 약간의 패널티. 너무 낮췄더니 환승을 너무 자주 함.
+                        e.isTransfer = true; //환승 true
+                        graph[ids[i]].push_back(e); //이중 for문이라 양방향 모두 생성됨
                     }
                 }
             }
@@ -100,87 +104,88 @@ void addTransferEdges() {
     }
 }
 
+vector<int> dijkstra(int start, int end) //최단거리 찾기 알고리즘
+{
+    vector<double> dist(stations.size(), INT_MAX); //역 개수만큼 크기, 거리 무한대로 초기화
+    vector<int> prev(stations.size(), -1); //경로 추적(이전 역 저장)용 vector(역 개수만큼 크기, 모든 값 -1로 초기화)
 
+    priority_queue<pair<double, int>, vector<pair<double, int>>, greater<>> pq; //우선순위 큐 생성(작은 값 먼저 나오도록 greater<>, 누적거리와 역 id 쌍)
 
-vector<int> dijkstra(int start, int end) {
-    vector<double> dist(stations.size(), INT_MAX); // 모든 역까지 거리 무한대로 초기화
-    vector<int> prev(stations.size(), -1);          // 경로 추적용 (이전 역 저장)
-    
-    priority_queue<pair<double,int>, vector<pair<double,int>>, greater<>> pq; // 최소 힙
-    
-    dist[start] = 0;
-    pq.push({0, start}); // {누적거리, 역id}
-    int actualEnd = -1;
+    dist[start] = 0; //출발역은 거리 0으로 초기화
+    pq.push({0, start}); //누적거리 0, 시작역 큐에 push
 
-    while (!pq.empty()) {
-        auto [cost, u] = pq.top(); // 가장 가까운 역 꺼내기
+    int actualEnd = -1; //환승역이 도착역일 때 실제 도달 호선의 id 저장
+
+    while(!pq.empty()) //빌 때까지
+    {
+        auto[cost, u] = pq.top(); //cost == 누적거리, u == 역 id
         pq.pop();
-        
-        if (stations[u].name == stations[end].name) {
-            actualEnd = u; // 실제 도착한 역 id 저장하기
+
+        if(stations[u].name == stations[end].name) //도착역 도착하면
+        {
+            actualEnd = u; //실제 도착한 역 id 저장하기(환승역일 시 다른 호선과 바뀔 위험)
             break;
         }
-        if (cost > dist[u]) continue; // 이미 더 짧은 경로 있으면 스킵
-        
-        for (Edge e : graph[u]) { // 인접 역 탐색
+
+        if(cost>dist[u]) //이미 해당 역에 더 짧은 경로가 존재할 시 스킵
+        {
+            continue;
+        }
+
+        for(Edge e : graph[u]) //u 역의 엣지 다 탐색
+        {
             double next = dist[u] + e.distance;
-            if (next < dist[e.to]) { // 더 짧은 경로 발견하면
-                dist[e.to] = next;
-                prev[e.to] = u;      // 이전 역 저장
+            if(next < dist[e.to]) //만약 e로 향하는 더 짧은 경로 발견 시
+            {
+                dist[e.to]=next;
+                prev[e.to]=u; //이전 역을 저장
                 pq.push({next, e.to});
             }
         }
     }
-    
-    // 경로 역추적
-    vector<int> path;
-    for (int cur = actualEnd; cur != -1; cur = prev[cur]) {
+
+    vector<int> path; //역추적 위한 vector
+    for(int cur = actualEnd; cur != -1; cur = prev[cur]) //역추적해서 push
+    {
         path.push_back(cur);
     }
-
-    reverse(path.begin(), path.end());
+    reverse(path.begin(), path.end()); //거꾸로
     return path;
 }
 
-int main(int argc, char* argv[]) {
-
+int main(int argc, char* argv[])
+{
     loadCSV("subway_utf8.csv");
     addTransferEdges();
-    
-    if (argc < 3) {
-        cout << "사용법: ./metro 출발역 도착역" << endl;
+
+    if(argc < 3) //넘어온 인자 적으면
+    {
+        cout<<"사용법: ./metro 출발역 도착역" << endl;
         return 1;
     }
 
-    string startName = argv[1];
+    string startName = argv[1]; //출발, 도착 역 이름
     string endName = argv[2];
 
-    // 역명으로 id 찾기
-    if (nameToIds.find(startName) == nameToIds.end() ||
-        nameToIds.find(endName) == nameToIds.end()) {
-        cout << "존재하지 않는 역" << endl;
-        return 0;
+    if(nameToIds.find(startName) == nameToIds.end() || 
+       nameToIds.find(endName) == nameToIds.end())
+    {
+            cout << "존재하지 않는 역" << endl;
+            return 0;
     }
-    
-    int startId = nameToIds[startName][0];
+
+    int startId = nameToIds[startName][0]; //출발, 도착 id
     int endId = nameToIds[endName][0];
 
     vector<int> path = dijkstra(startId, endId);
-    
-    // 경로 출력
-    cout << "\n경로: ";
-    for (int id : path) {
-        cout << stations[id].name << "(" << stations[id].line << "호선)";
-        if (id != path.back()) cout << " -> ";
-    }
-    cout << endl;
 
     ofstream out("path.txt");
 
-    for (int id : path) {
+    for(int id:path) //path.txt 파일에 입력
+    {
         out << stations[id].name << "," << stations[id].line << "\n";
     }
+
     out.close();
-    
     return 0;
 }
