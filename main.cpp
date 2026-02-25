@@ -19,7 +19,6 @@ struct Station {
 struct Edge {
     int to;
     double distance;
-    int time;
     bool isTransfer;
 };
 
@@ -27,12 +26,6 @@ struct Edge {
 vector<Station> stations; //역 목록
 vector<vector<Edge>> graph; // 각 역에서의 경로 목록
 map<string, vector<int>> nameToIds; //이름으로 역 id 찾기(중복 호선)
-
-int parseTime(string t) { // "2:00" -> 2분으로 변환
-    int colon = t.find(':');
-    int min = stoi(t.substr(0, colon));
-    return min;
-}
 
 void loadCSV(string filename) {
     ifstream file(filename);
@@ -71,14 +64,12 @@ void loadCSV(string filename) {
         if(prevLine == s.line){ //아직 같은 호선을 추가중이면
             Edge e; 
             e.to = s.id;
-            e.time = parseTime(tokens[3]);
             e.distance = stod(tokens[4]);
             e.isTransfer = false;
             graph[prevId].push_back(e); //직전 역과 지금 역의 경로를 연결
 
             Edge e2;
             e2.to = prevId;
-            e2.time = parseTime(tokens[3]);
             e2.distance = stod(tokens[4]);
             e2.isTransfer = false;
             graph[s.id].push_back(e2);
